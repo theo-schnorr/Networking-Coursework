@@ -103,8 +103,10 @@ int main(void)
 				//When the client connects to the user it sends the username over to add itself to the user list.
 				printf("Our connection request has been accepted \n");
 
+				RakNet::Time timestamp = RakNet::GetTime();
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_USERNAME);
+				bsOut.Write((RakNet::Time)timestamp);
 				bsOut.Write(username);
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 
@@ -166,23 +168,16 @@ int main(void)
 			peer->Shutdown(300);
 			break;
 		}
-		else if (!strcmp(message, "/ts"))
-		{
-			RakNet::Time timestamp = RakNet::GetTime();
-			RakNet::BitStream bsOut;
-			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE_WITH_TIME);
-			bsOut.Write((RakNet::Time)timestamp);
-			bsOut.Write("Chat Message After Time Stamp Sent");
-			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
-		}
 		else if (strcmp(message, ""))
 		{
 			//If the message is not empty, send the chat message to the server
+			RakNet::Time timestamp = RakNet::GetTime();
 			strcpy(finalMessage, username);
 			strcat(finalMessage, message);
 
 			RakNet::BitStream bsOut;
 			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
+			bsOut.Write((RakNet::Time)timestamp);
 			bsOut.Write(finalMessage);
 			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}

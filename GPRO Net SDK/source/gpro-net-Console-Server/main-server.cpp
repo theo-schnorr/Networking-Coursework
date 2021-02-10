@@ -54,6 +54,7 @@ struct User {
 };
 
 struct Message {
+	RakNet::Time timestamp;
 	std::string message;
 };
 
@@ -145,27 +146,6 @@ int main(void)
 			{
 				//Reads the incomming chat message and broadcasts it to every other client
 				RakNet::RakString rs;
-				RakNet::BitStream bsIn(packet->data, packet->length, false);
-				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
-				bsIn.Read(rs);
-				printf("%s\n", rs.C_String());
-
-				Message message = {
-					rs.C_String()
-				};
-				Messages.push_back(message);
-
-				RakNet::BitStream bsOut;
-				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
-				bsOut.Write(rs.C_String());
-				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
-
-				break;
-			}
-			case ID_NEW_CHAT_MESSAGE_WITH_TIME:
-			{
-				//Reads the incomming chat message and broadcasts it to every other client
-				RakNet::RakString rs;
 				RakNet::Time ts;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
@@ -173,6 +153,12 @@ int main(void)
 				bsIn.Read(rs);
 				std::cout << ts << " ";
 				printf("%s\n", rs.C_String());
+
+				Message message = {
+					ts,
+					rs.C_String()
+				};
+				Messages.push_back(message);
 
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
@@ -187,8 +173,10 @@ int main(void)
 				//Store the user and the address
 
 				RakNet::RakString rs;
+				RakNet::Time ts;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(ts);
 				bsIn.Read(rs);
 				User user = {
 					rs.C_String(),
@@ -200,6 +188,7 @@ int main(void)
 				std::string join = user.username + "has joined the chat";
 
 				Message message = {
+					ts,
 					join
 				};
 				Messages.push_back(message);
@@ -240,7 +229,8 @@ int main(void)
 
 		for (int i = 0; i < Messages.size(); i++)
 		{
-			file << Messages[i].message << "\n";
+			file << Messages[i].timestamp << ' ';
+			file << Messages[i].message << '\n';
 		}
 
 		file.close();
