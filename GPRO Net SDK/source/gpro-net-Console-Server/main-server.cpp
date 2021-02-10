@@ -39,12 +39,15 @@
 
 #include "string"
 #include "vector"
+#include "iostream"
 
 enum GameMessages
 {
 	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
 	ID_NEW_USERNAME,
-	ID_GET_USERS
+	ID_GET_USERS,
+	ID_NEW_CHAT_MESSAGE_WITH_TIME
+
 };
 
 //Struct to hold the the current users
@@ -73,7 +76,9 @@ int main(void)
 	{
 		for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
 		{
-			switch (packet->data[0])
+			RakNet::MessageID msg = packet->data[0];
+
+			switch (msg)
 			{
 			case ID_REMOTE_DISCONNECTION_NOTIFICATION:
 			{
@@ -139,6 +144,25 @@ int main(void)
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());
+
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
+				bsOut.Write(rs.C_String());
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
+
+				break;
+			}
+			case ID_NEW_CHAT_MESSAGE_WITH_TIME:
+			{
+				//Reads the incomming chat message and broadcasts it to every other client
+				RakNet::RakString rs;
+				RakNet::Time ts;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(ts);
+				bsIn.Read(rs);
+				std::cout << ts << " ";
 				printf("%s\n", rs.C_String());
 
 				RakNet::BitStream bsOut;

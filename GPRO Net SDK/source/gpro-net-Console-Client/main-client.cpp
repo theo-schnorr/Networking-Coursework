@@ -42,7 +42,8 @@ enum GameMessages
 {
 	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
 	ID_NEW_USERNAME,
-	ID_GET_USERS
+	ID_GET_USERS,
+	ID_NEW_CHAT_MESSAGE_WITH_TIME
 };
 
 int main(void)
@@ -79,11 +80,6 @@ int main(void)
 		{
 			RakNet::MessageID msg = packet->data[0];
 			server = packet->systemAddress;
-
-			if (msg == ID_TIMESTAMP)
-			{
-				//Handle the timestamp
-			}
 
 			switch (msg)
 			{
@@ -169,6 +165,15 @@ int main(void)
 			//If the user types in /exit, it will let the server know it wants to disconnect then close the program
 			peer->Shutdown(300);
 			break;
+		}
+		else if (!strcmp(message, "/ts"))
+		{
+			RakNet::Time timestamp = RakNet::GetTime();
+			RakNet::BitStream bsOut;
+			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE_WITH_TIME);
+			bsOut.Write((RakNet::Time)timestamp);
+			bsOut.Write("Chat Message After Time Stamp Sent");
+			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}
 		else if (strcmp(message, ""))
 		{
