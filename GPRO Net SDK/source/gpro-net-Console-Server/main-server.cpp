@@ -16,6 +16,8 @@
 	By Daniel S. Buckstein
 	main-server.c/.cpp
 	Main source for console server application.
+
+		Authors: Theo Schnorrenberg and Dante Xystus
 */
 
 #include "gpro-net/gpro-net.h"
@@ -45,6 +47,7 @@ enum GameMessages
 	ID_GET_USERS
 };
 
+//Struct to hold the the current users
 struct User {
 	std::string username;
 	RakNet::SystemAddress address;
@@ -104,16 +107,34 @@ int main(void)
 			}
 			case ID_DISCONNECTION_NOTIFICATION:
 			{
+				//If a client disconnects we should remove it from the userlist
 				printf("A client has disconnected.\n");
+				for (int i = 0; i < UserList.size(); i++)
+				{
+					if (packet->systemAddress == UserList[i].address)
+					{
+						UserList.erase(UserList.begin() + i);
+					}
+				}
 				break;
 			}
 			case ID_CONNECTION_LOST:
 			{
+				//If a client disconnects we should remove it from the userlist
 				printf("A client lost the connection.\n");
+
+				for (int i = 0; i < UserList.size(); i++)
+				{
+					if (packet->systemAddress == UserList[i].address)
+					{
+						UserList.erase(UserList.begin() + i);
+					}
+				}
 				break;
 			}
 			case ID_NEW_CHAT_MESSAGE:
 			{
+				//Reads the incomming chat message and broadcasts it to every other client
 				RakNet::RakString rs;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
@@ -153,11 +174,13 @@ int main(void)
 			}
 			case ID_GET_USERS:
 			{
+				//Gets all the active users and sends the list as a chat message to the client that requested it
 				std::string msg = "";
-				for (User u : UserList)
+				for (int i = 0; i < UserList.size(); i++)
 				{
-					msg += u.username + ",";
+					msg += UserList[i].username + ",";
 				}
+
 				char userlist[] = "UserList: ";
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);

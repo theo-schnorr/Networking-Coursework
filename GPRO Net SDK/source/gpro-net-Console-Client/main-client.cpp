@@ -20,15 +20,15 @@
 
 	main-client.c/.cpp
 	Main source for console client application.
+
+	Authors: Theo Schnorrenberg and Dante Xystus
 */
 
 #include "gpro-net/gpro-net.h"
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 #include "RakNet/RakPeerInterface.h"
 #include "RakNet/RakNetTypes.h"
@@ -36,9 +36,8 @@
 #include "RakNet/BitStream.h"
 #include "RakNet/GetTime.h"
 
-#define MAX_CLIENTS 10;
-
 const char USER_BUFFER[] = ": ";
+
 enum GameMessages
 {
 	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
@@ -46,26 +45,16 @@ enum GameMessages
 	ID_GET_USERS
 };
 
-//Packs the data to take up less space
-#pragma pack (push)
-struct GameMessage
-{
-	char msgID; //The ID
-
-	char msg[512]; //The Message
-
-	//Timestamp will go here
-};
-#pragma pack (pop)
-
 int main(void)
 {
+	const char SERVER_IP[] = "172.16.2.63";
+	const short SERVER_PORT = 7777;
+
 	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::Packet* packet;
 	RakNet::SocketDescriptor sd;
-	const char SERVER_IP[] = "172.16.2.186";
-	const short SERVER_PORT = 7777;
 	RakNet::SystemAddress server;
+
 
 	peer->Startup(1, &sd, 1);
 	peer->SetMaximumIncomingConnections(0);
@@ -77,16 +66,11 @@ int main(void)
 	char message[32];
 	char finalMessage[64];
 
+	//Asks the user to enter a username, this will help identify the user when chatting
 	printf("Please enter a username: ");
 	gets_s(username);
 	strcat(username, USER_BUFFER);
 
-	printf("Please enter a chat message: ");
-	gets_s(message);
-
-	strcpy(finalMessage, username);
-	strcat(finalMessage, message);
-	
 
 	//Network Loop
 	while (1)
@@ -120,8 +104,9 @@ int main(void)
 			}
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 			{
+				//When the client connects to the user it sends the username over to add itself to the user list.
 				printf("Our connection request has been accepted \n");
-			
+
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_USERNAME);
 				bsOut.Write(username);
@@ -151,13 +136,12 @@ int main(void)
 			}
 			case ID_NEW_CHAT_MESSAGE:
 			{
+				//When the client recieves a chat message it writes it to the screen
 				RakNet::RakString rs;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
 				printf("%s\n", rs.C_String());
-
-
 				break;
 			}
 			default:
@@ -171,16 +155,24 @@ int main(void)
 		//Typing Loop
 		printf("Please enter a chat message: ");
 		gets_s(message);
+		strcat(message, "\0"); //Adding a zero-terminate to the string cause it might not have one when it gets here
 
 		if (!strcmp(message, "/users"))
 		{
+			//If the user types "/users", it sends a packet to ask the user for the user list
 			RakNet::BitStream bsOut;
 			bsOut.Write((RakNet::MessageID)ID_GET_USERS);
 			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}
-
-		if (strcmp(message, ""))
+		else if (!strcmp(message, "/exit"))
 		{
+			//If the user types in /exit, it will let the server know it wants to disconnect then close the program
+			peer->Shutdown(300);
+			break;
+		}
+		else if (strcmp(message, ""))
+		{
+			//If the message is not empty, send the chat message to the server
 			strcpy(finalMessage, username);
 			strcat(finalMessage, message);
 
@@ -189,11 +181,16 @@ int main(void)
 			bsOut.Write(finalMessage);
 			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}
-		
+		else
+		{
+			//If the message is blank, then dont send a message
+			//This will allow the client to update the chat without sending a message
+		}
+
 	}
 
 	RakNet::RakPeerInterface::DestroyInstance(peer);
 	printf("\n\n");
-	system("pause");	
+	system("pause");
 
 }
