@@ -26,12 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
+#include <fstream>
 
-#include "RakNet/RakPeerInterface.h"
-
-
-#include <stdio.h>
-#include <string.h>
 #include "RakNet/RakPeerInterface.h"
 #include "RakNet/MessageIdentifiers.h"
 #include "RakNet/BitStream.h"
@@ -56,6 +53,10 @@ struct User {
 	RakNet::SystemAddress address;
 };
 
+struct Message {
+	std::string message;
+};
+
 int main(void)
 {
 
@@ -71,6 +72,9 @@ int main(void)
 	peer->SetMaximumIncomingConnections(MAX_CLIENTS);
 
 	std::vector<User> UserList;
+
+	std::vector<Message> Messages;
+	std::ofstream file;
 
 	while (1)
 	{
@@ -146,6 +150,11 @@ int main(void)
 				bsIn.Read(rs);
 				printf("%s\n", rs.C_String());
 
+				Message message = {
+					rs.C_String()
+				};
+				Messages.push_back(message);
+
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
 				bsOut.Write(rs.C_String());
@@ -190,6 +199,11 @@ int main(void)
 
 				std::string join = user.username + "has joined the chat";
 
+				Message message = {
+					join
+				};
+				Messages.push_back(message);
+
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
 				bsOut.Write(join.c_str());
@@ -219,6 +233,17 @@ int main(void)
 			}
 			}
 		}
+
+
+		// Write messages to log file
+		file.open("serverlog.txt");
+
+		for (int i = 0; i < Messages.size(); i++)
+		{
+			file << Messages[i].message << "\n";
+		}
+
+		file.close();
 	}
 
 
