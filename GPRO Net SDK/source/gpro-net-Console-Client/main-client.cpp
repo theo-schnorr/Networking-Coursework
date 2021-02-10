@@ -61,7 +61,7 @@ int main(void)
 	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::Packet* packet;
 	RakNet::SocketDescriptor sd;
-	const char SERVER_IP[] = "172.16.2.186";
+	const char SERVER_IP[] = "172.16.2.56";
 	const short SERVER_PORT = 7777;
 	RakNet::SystemAddress server;
 
@@ -79,7 +79,11 @@ int main(void)
 	gets_s(username);
 	strcat(username, USER_BUFFER);
 
+	printf("Please enter a chat message: ");
+	gets_s(message);
 
+	strcpy(finalMessage, username);
+	strcat(finalMessage, message);
 	
 
 	//Network Loop
@@ -173,7 +177,7 @@ int main(void)
 		printf("Please enter a chat message: ");
 		gets_s(message);
 
-		if (message != "")
+		if (strcmp(message, ""))
 		{
 			strcpy(finalMessage, username);
 			strcat(finalMessage, message);
