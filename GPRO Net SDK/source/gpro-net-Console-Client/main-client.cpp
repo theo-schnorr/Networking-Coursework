@@ -41,7 +41,9 @@
 const char USER_BUFFER[] = ": ";
 enum GameMessages
 {
-	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1
+	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
+	ID_NEW_USERNAME,
+	ID_GET_USERS
 };
 
 //Packs the data to take up less space
@@ -61,7 +63,7 @@ int main(void)
 	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::Packet* packet;
 	RakNet::SocketDescriptor sd;
-	const char SERVER_IP[] = "172.16.2.56";
+	const char SERVER_IP[] = "172.16.2.186";
 	const short SERVER_PORT = 7777;
 	RakNet::SystemAddress server;
 
@@ -119,17 +121,10 @@ int main(void)
 			case ID_CONNECTION_REQUEST_ACCEPTED:
 			{
 				printf("Our connection request has been accepted \n");
-				/*GameMessage msg = {
-					(char)ID_GAME_MESSAGE_1,
-					"Hello World"
-				};
-
-				peer->Send((char*)&msg, sizeof(msg), HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
-				*/
-
+			
 				RakNet::BitStream bsOut;
-				bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
-				bsOut.Write(finalMessage);
+				bsOut.Write((RakNet::MessageID)ID_NEW_USERNAME);
+				bsOut.Write(username);
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 
 				break;
@@ -154,7 +149,7 @@ int main(void)
 				printf("Connection Lost");
 				break;
 			}
-			case ID_GAME_MESSAGE_1:
+			case ID_NEW_CHAT_MESSAGE:
 			{
 				RakNet::RakString rs;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
@@ -177,16 +172,24 @@ int main(void)
 		printf("Please enter a chat message: ");
 		gets_s(message);
 
+		if (!strcmp(message, "/users"))
+		{
+			RakNet::BitStream bsOut;
+			bsOut.Write((RakNet::MessageID)ID_GET_USERS);
+			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+		}
+
 		if (strcmp(message, ""))
 		{
 			strcpy(finalMessage, username);
 			strcat(finalMessage, message);
 
 			RakNet::BitStream bsOut;
-			bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
 			bsOut.Write(finalMessage);
 			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}
+		
 	}
 
 	RakNet::RakPeerInterface::DestroyInstance(peer);

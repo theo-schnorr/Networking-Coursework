@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "RakNet/RakPeerInterface.h"
 
 
@@ -36,10 +35,19 @@
 #include "RakNet/BitStream.h"
 #include "RakNet/RakNetTypes.h"  
 
+#include "string"
+#include "vector"
 
 enum GameMessages
 {
-	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1
+	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
+	ID_NEW_USERNAME,
+	ID_GET_USERS
+};
+
+struct User {
+	std::string username;
+	RakNet::SystemAddress address;
 };
 
 int main(void)
@@ -55,6 +63,8 @@ int main(void)
 
 	printf("Starting the server.\n");
 	peer->SetMaximumIncomingConnections(MAX_CLIENTS);
+
+	std::vector<User> UserList;
 
 	while (1)
 	{
@@ -102,7 +112,7 @@ int main(void)
 				printf("A client lost the connection.\n");
 				break;
 			}
-			case ID_GAME_MESSAGE_1:
+			case ID_NEW_CHAT_MESSAGE:
 			{
 				RakNet::RakString rs;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
@@ -111,10 +121,41 @@ int main(void)
 				printf("%s\n", rs.C_String());
 
 				RakNet::BitStream bsOut;
-				bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
 				bsOut.Write(rs.C_String());
- 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 
+				break;
+			}
+			case ID_NEW_USERNAME:
+			{
+				//When a new user connects to the server
+				//Store the user and the address
+
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				User user = {
+					rs.C_String(),
+					packet->systemAddress
+				};
+
+				UserList.push_back(user);
+				break;
+			}
+			case ID_GET_USERS:
+			{
+				std::string msg;
+				for (User u : UserList)
+				{
+					msg += u.username + ", ";
+				}
+
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
+				bsOut.Write("UserList: " + msg);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 				break;
 			}
 			default:
