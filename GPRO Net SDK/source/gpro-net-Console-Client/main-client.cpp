@@ -63,6 +63,7 @@ int main(void)
 	RakNet::SocketDescriptor sd;
 	const char SERVER_IP[] = "172.16.2.186";
 	const short SERVER_PORT = 7777;
+	RakNet::SystemAddress server;
 
 	peer->Startup(1, &sd, 1);
 	peer->SetMaximumIncomingConnections(0);
@@ -78,24 +79,21 @@ int main(void)
 	gets_s(username);
 	strcat(username, USER_BUFFER);
 
-	printf("Please enter a chat message: ");
-	gets_s(message);
 
-	strcpy(finalMessage, username);
-	strcat(finalMessage, message);
+	
 
-
+	//Network Loop
 	while (1)
 	{
 		for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
 		{
 			RakNet::MessageID msg = packet->data[0];
+			server = packet->systemAddress;
 
 			if (msg == ID_TIMESTAMP)
 			{
 				//Handle the timestamp
 			}
-
 
 			switch (msg)
 			{
@@ -169,12 +167,22 @@ int main(void)
 				break;
 			}
 			}
-
-
 		}
 
+		//Typing Loop
+		printf("Please enter a chat message: ");
+		gets_s(message);
 
+		if (message != "")
+		{
+			strcpy(finalMessage, username);
+			strcat(finalMessage, message);
 
+			RakNet::BitStream bsOut;
+			bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+			bsOut.Write(finalMessage);
+			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+		}
 	}
 
 	RakNet::RakPeerInterface::DestroyInstance(peer);

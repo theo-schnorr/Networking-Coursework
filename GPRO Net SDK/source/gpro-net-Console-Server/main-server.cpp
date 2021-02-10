@@ -110,7 +110,10 @@ int main(void)
 				bsIn.Read(rs);
 				printf("%s\n", rs.C_String());
 
-					
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+				bsOut.Write(rs.C_String());
+ 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 
 				break;
 			}
