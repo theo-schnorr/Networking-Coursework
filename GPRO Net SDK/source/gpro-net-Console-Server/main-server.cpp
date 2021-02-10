@@ -110,6 +110,7 @@ int main(void)
 				bsIn.Read(rs);
 				printf("%s\n", rs.C_String());
 
+					
 
 				break;
 			}

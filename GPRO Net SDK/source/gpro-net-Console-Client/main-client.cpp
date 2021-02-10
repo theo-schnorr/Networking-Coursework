@@ -38,7 +38,7 @@
 
 #define MAX_CLIENTS 10;
 
-
+const char USER_BUFFER[] = ": ";
 enum GameMessages
 {
 	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1
@@ -69,6 +69,21 @@ int main(void)
 	peer->Connect(SERVER_IP, SERVER_PORT, 0, 0);
 
 	printf("Starting the client. \n");
+
+	char username[32];
+	char message[32];
+	char finalMessage[64];
+
+	printf("Please enter a username: ");
+	gets_s(username);
+	strcat(username, USER_BUFFER);
+
+	printf("Please enter a chat message: ");
+	gets_s(message);
+
+	strcpy(finalMessage, username);
+	strcat(finalMessage, message);
+
 
 	while (1)
 	{
@@ -112,7 +127,7 @@ int main(void)
 
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
-				bsOut.Write("SMT 4 is bad");
+				bsOut.Write(finalMessage);
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 
 				break;
