@@ -146,16 +146,16 @@ int main(void)
 			}
 			case ID_GET_USERS:
 			{
-				std::string msg;
+				std::string msg = "";
 				for (User u : UserList)
 				{
-					msg += u.username + ", ";
+					msg += u.username + ",";
 				}
-
+				char userlist[] = "UserList: ";
 				RakNet::BitStream bsOut;
 				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
-				bsOut.Write("UserList: " + msg);
-				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
+				bsOut.Write(strcat(userlist, msg.c_str()));
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 				break;
 			}
 			default:
