@@ -142,6 +142,13 @@ int main(void)
 				};
 
 				UserList.push_back(user);
+
+				std::string join = user.username + "has joined the chat";
+
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
+				bsOut.Write(join.c_str());
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 				break;
 			}
 			case ID_GET_USERS:
