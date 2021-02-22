@@ -20,23 +20,159 @@
 
 	main-client.c/.cpp
 	Main source for console client application.
+
+	Author: Theo Schnorrenberg
 */
 
 #include "gpro-net/gpro-net.h"
-
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "RakNet/RakPeerInterface.h"
+#include "RakNet/RakNetTypes.h"
+#include "RakNet/MessageIdentifiers.h"
+#include "RakNet/BitStream.h"
+#include "RakNet/GetTime.h"
 
-
-int main(int const argc, char const* const argv[])
+enum GameMessages
 {
+	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
+	ID_NEW_USERNAME,
+	ID_GET_USERS,
+	ID_NEW_CHAT_MESSAGE_WITH_TIME
+};
+
+int main(void)
+{
+	// Theo, remember to update this with the vdi
+	const char SERVER_IP[] = "172.16.2.63";
+	const short SERVER_PORT = 7777;
+
+	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
+	RakNet::Packet* packet;
+	RakNet::SocketDescriptor sd;
+	RakNet::SystemAddress server;
 
 
+	peer->Startup(1, &sd, 1);
+	peer->SetMaximumIncomingConnections(0);
+	peer->Connect(SERVER_IP, SERVER_PORT, 0, 0);
+
+	printf("Starting the client. \n");
+
+	// Accept a message of 128 characters max and username of 32 characters max
+	char username[32];
+	char message[128];
+
+	//Asks the user to enter a username, this will help identify the user when chatting
+	printf("Please enter a username: ");
+	gets_s(username);
+
+	// NETWORK LOOP
+	while (1)
+	{
+		for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
+		{
+			RakNet::MessageID msg = packet->data[0];
+			server = packet->systemAddress;
+
+			switch (msg)
+			{
+			case ID_REMOTE_DISCONNECTION_NOTIFICATION:
+			{
+				printf("Another client has disconnected.\n");
+				break;
+			}
+			case ID_REMOTE_CONNECTION_LOST:
+			{
+				printf("Another client has lost the connection.\n");
+				break;
+			}
+			case ID_REMOTE_NEW_INCOMING_CONNECTION:
+			{
+				printf("Another client has connected.\n");
+				break;
+			}
+			case ID_CONNECTION_REQUEST_ACCEPTED:
+			{
+				printf("Our connection request has been accepted \n");
+
+				RakNet::Time timestamp = RakNet::GetTime();
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_NEW_USERNAME);
+				bsOut.Write((RakNet::Time)timestamp);
+				bsOut.Write(username);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
+
+				break;
+			}
+			case ID_NEW_INCOMING_CONNECTION:
+			{
+				printf("A connection is incoming.\n");
+				break;
+			}
+			case ID_NO_FREE_INCOMING_CONNECTIONS:
+			{
+				printf("The server is full.\n");
+				break;
+			}
+			case ID_DISCONNECTION_NOTIFICATION:
+			{
+				printf("We have been disconnected.\n");
+				break;
+			}
+			case ID_CONNECTION_LOST:
+			{
+				printf("Connection Lost");
+				break;
+			}
+			case ID_NEW_CHAT_MESSAGE:
+			{
+				//When the client recieves a chat message it writes it to the screen
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());
+				break;
+			}
+			default:
+			{
+				printf("Message with identifier %i has arrived.\n", packet->data[0]);
+				break;
+			}
+			}
+		}
+
+		// TYPING LOOP
+
+		printf("Please enter a chat message: ");
+		gets_s(message);
+		strcat(message, "\0");
+
+		// Sending exit will let the server know the client wants to disconnect
+		if (!strcmp(message, "exit"))
+		{
+			peer->Shutdown(300);
+			break;
+		}
+		// Send a message to the server when the message isn't empty
+		else if (strcmp(message, ""))
+		{
+			RakNet::Time timestamp = RakNet::GetTime();
+
+			RakNet::BitStream bsOut;
+			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
+			bsOut.Write((RakNet::Time)timestamp);
+			bsOut.Write(message);
+			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+		}
+	}
+
+	RakNet::RakPeerInterface::DestroyInstance(peer);
 	printf("\n\n");
 	system("pause");
+
 }
