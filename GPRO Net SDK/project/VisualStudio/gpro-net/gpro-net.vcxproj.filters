@@ -33,6 +33,9 @@
     <ClInclude Include="..\..\..\include\gpro-net\gpro-net-common\checkers.h">
       <Filter>Header Files\gpro-net-common</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\gpro-net\gpro-net-common\blackjack.h">
+      <Filter>Header Files\gpro-net-common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\source\gpro-net\gpro-net.c">
@@ -42,6 +45,9 @@
       <Filter>Source Files\gpro-net-common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\source\gpro-net\gpro-net-common\checkers.cpp">
+      <Filter>Source Files\gpro-net-common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\source\gpro-net\gpro-net-common\blackjack.cpp">
       <Filter>Source Files\gpro-net-common</Filter>
     </ClCompile>
   </ItemGroup>
