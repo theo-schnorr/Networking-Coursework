@@ -47,7 +47,7 @@ void CheckHand();
 bool GetBust();
 
 // Checks if you won and shows you the result
-void CheckWin();
+void CheckWin(int dealerTotal);
 
 // Goes through the logic of the dealer's turn and returns dealer result (dealer only)
 int DealerTurn();

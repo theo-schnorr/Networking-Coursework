@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 
 #include "RakNet/RakPeerInterface.h"
 #include "RakNet/RakNetTypes.h"
@@ -36,12 +37,19 @@
 #include "RakNet/BitStream.h"
 #include "RakNet/GetTime.h"
 
+#include "gpro-net/gpro-net-common/blackjack.h"
+
 enum GameMessages
 {
 	ID_NEW_CHAT_MESSAGE = ID_USER_PACKET_ENUM + 1,
 	ID_NEW_USERNAME,
-	ID_GET_USERS,
-	ID_NEW_CHAT_MESSAGE_WITH_TIME
+	ID_NEW_CHAT_MESSAGE_WITH_TIME,
+	ID_DEAL_MESSAGE,
+	ID_HIT_MESSAGE,
+	ID_START_TURN,
+	ID_END_TURN,
+	ID_START_GAME,
+	ID_DEALER_HAND
 };
 
 int main(void)
@@ -136,6 +144,144 @@ int main(void)
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
 				printf("%s\n", rs.C_String());
+
+				break;
+			}
+			case ID_DEAL_MESSAGE:
+			{
+				// Get dealt card and add it to hand
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+
+				int card;
+				sscanf(rs.C_String(), "%d", &card);
+				Hit(card);
+
+				break;
+			}
+			case ID_START_TURN:
+			{
+				// Messagesent telling it's your turn and asking to hit or stand
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());
+
+				std::string ans;
+				std::cin >> ans;
+
+				// Hit requests a card to be dealt
+				if (ans == "hit")
+				{
+					RakNet::BitStream bsOut;
+					bsOut.Write((RakNet::MessageID)ID_HIT_MESSAGE);
+					peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+				}
+				// Stand goes to next turn
+				else
+				{
+					string message = ShowHand(false);
+
+					RakNet::BitStream bsOut;
+					bsOut.Write((RakNet::MessageID)ID_END_TURN);
+					bsOut.Write(message.c_str());
+					peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+				}
+
+				break;
+			}
+			case ID_HIT_MESSAGE:
+			{
+				// Get dealt card and add it to hand
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+
+				int card;
+				sscanf(rs.C_String(), "%d", &card);
+				Hit(card);
+
+				// Update hand and show if bust
+				cout << ShowHand(false) << endl;
+				cout << "Soft total: " << softTotal << endl;
+				cout << "Hard total: " << hardTotal << endl;
+
+				// If not bust, ask if go again
+				if (!GetBust)
+				{
+					cout << "Hit or stand?" << endl;
+					std::string ans;
+					std::cin >> ans;
+
+					// Hit requests a card to be dealt
+					if (ans == "hit")
+					{
+						RakNet::BitStream bsOut;
+						bsOut.Write((RakNet::MessageID)ID_HIT_MESSAGE);
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+					}
+					// Stand goes to next turn
+					else
+					{
+						string message = ShowHand(false);
+
+						RakNet::BitStream bsOut;
+						bsOut.Write((RakNet::MessageID)ID_END_TURN);
+						bsOut.Write(message.c_str());
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+					}
+				}
+				// Else, continue to next turn
+				else
+				{
+					cout << "Bust!" << endl;
+
+					string message = ShowHand(false);
+
+					RakNet::BitStream bsOut;
+					bsOut.Write((RakNet::MessageID)ID_END_TURN);
+					bsOut.Write(message.c_str());
+					peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+				}
+
+				break;
+			}
+			case ID_START_GAME:
+			{
+				// Get request to start game of blackjack
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());
+
+				string ans;
+				cin >> ans;
+
+				system("cls");
+
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_START_GAME);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+
+				break;
+			}
+			case ID_DEALER_HAND:
+			{
+				// Get dealer total and compare
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+
+				int card;
+				sscanf(rs.C_String(), "%d", &card);
+				CheckWin(card);
+
 				break;
 			}
 			default:
@@ -144,30 +290,6 @@ int main(void)
 				break;
 			}
 			}
-		}
-
-		// TYPING LOOP
-
-		printf("Please enter a chat message: ");
-		gets_s(message);
-		strcat(message, "\0");
-
-		// Sending exit will let the server know the client wants to disconnect
-		if (!strcmp(message, "exit"))
-		{
-			peer->Shutdown(300);
-			break;
-		}
-		// Send a message to the server when the message isn't empty
-		else if (strcmp(message, ""))
-		{
-			RakNet::Time timestamp = RakNet::GetTime();
-
-			RakNet::BitStream bsOut;
-			bsOut.Write((RakNet::MessageID)ID_NEW_CHAT_MESSAGE);
-			bsOut.Write((RakNet::Time)timestamp);
-			bsOut.Write(message);
-			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
 		}
 	}
 
