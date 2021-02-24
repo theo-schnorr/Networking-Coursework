@@ -49,13 +49,15 @@ enum GameMessages
 	ID_START_TURN,
 	ID_END_TURN,
 	ID_START_GAME,
-	ID_DEALER_HAND
+	ID_DEALER_HAND,
+	ID_REQUEST_HAND,
+	ID_SHOW_HANDS
 };
 
 int main(void)
 {
 	// Theo, remember to update this with the vdi
-	const char SERVER_IP[] = "172.16.2.63";
+	const char SERVER_IP[] = "172.16.2.60";
 	const short SERVER_PORT = 7777;
 
 	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
@@ -163,7 +165,7 @@ int main(void)
 			}
 			case ID_START_TURN:
 			{
-				// Messagesent telling it's your turn and asking to hit or stand
+				// Message sent telling it's your turn and asking to hit or stand
 				RakNet::RakString rs;
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
@@ -281,6 +283,25 @@ int main(void)
 				int card;
 				sscanf(rs.C_String(), "%d", &card);
 				CheckWin(card);
+
+				break;
+			}
+			case ID_REQUEST_HAND:
+			{
+				string message = ShowHand(false);
+
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_REQUEST_HAND);
+				bsOut.Write(message.c_str());
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, server, false);
+			}
+			case ID_SHOW_HANDS:
+			{
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());
 
 				break;
 			}

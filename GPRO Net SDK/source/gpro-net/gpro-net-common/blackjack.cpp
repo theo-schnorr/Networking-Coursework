@@ -15,6 +15,7 @@ void Shuffle()
 {
 	// Need to clear current shuffled deck to reshuffle
 	Deck.clear();
+	Hand.clear();
 
 	for (int i = 0; i < 52; i++)
 	{
@@ -98,6 +99,8 @@ void CheckWin(int dealerTotal)
 	{
 		cout << "You busted out." << endl;
 	}
+
+	Hand.clear();
 }
 
 // Goes through the logic of the dealer's turn and returns dealer result (dealer only)
